@@ -61,7 +61,8 @@ def get_data(input_folder, one_hot_encode=False, do_name=True):
 def get_feedforward_model(x):
     # right now, use network with 4 hidden layers with 50 nodes each
     input_layer = Input(shape=(len(x[0]),))
-    dense = Dense(50, activation='relu')(input_layer)
+    d = Dropout(0.1)(input_layer)
+    dense = Dense(50, activation='relu')(d)
     dense = Dense(50, activation='relu')(dense)
     dense = Dense(50, activation='relu')(dense)
     dense = Dense(50, activation='relu')(dense)
@@ -88,6 +89,8 @@ def compare_models():
     linear_model.fit(x_train, y_train)
 
     linear_train_r2 = linear_model.score(x_train, y_train)
+    # this fails if do_name is true, because it doesnt get any training points for some of the names
+    # need to actually implement random effects model to get better comparison
     linear_test_r2 = linear_model.score(x_test, y_test)
 
     nn = get_feedforward_model(x_train)
