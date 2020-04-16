@@ -1,0 +1,20 @@
+https://stats.stackexchange.com/questions/261008/deep-learning-how-do-i-know-which-variables-are-important
+	This is where i first heard about using weights or weight derivatives
+
+"Why Should I Trust You?": Explaining the Predictions of Any Classifier
+	This paper says it can explain any model, including feature importances, and has a python package so it might be pretty easy to use
+Human microbiome aging clocks based on deep learning and tandem of permutation feature importance and accumulated local effects
+	This paper uses permutation feature importance and accumulated local effects to estimate features impact in neural network
+
+Early stabilizing feature importance for TensorFlow deep neural networks
+	Describes a new method for getting feature importances in tensorflow, not much detail
+
+Just google scholar search for 'deep learning feature importance' or 'neural network feature importance' for a few more
+
+Szegedy C, Zaremba W, Sutskever I, Bruna J, Erhan D, Goodfellow I, et al. Intriguing properties of neural networks
+	This argues that interpreting individual units or weights is dangerous
+
+Interpretable deep models for ICU outcome prediction
+	'Interpretable mimic learning', basically it learns a neural network for the predictive power, then uses the neural net to create a classical interpretable 'mimic' model
+
+
