@@ -35,7 +35,7 @@ def load_data(input_folder, one_hot_encode=False, do_name=True):
     if one_hot_encode:
         # one hot encode the predictors match_name and marathon
         one_hot_cols = ['marathon']
-        prefix = ['']
+        prefix = ['race_']
         if do_name:
             one_hot_cols.append('match_name')
             prefix.append('')
@@ -46,7 +46,7 @@ def load_data(input_folder, one_hot_encode=False, do_name=True):
     return df
 
 
-def get_data(input_folder, one_hot_encode=False, do_name=True):
+def get_data(input_folder, one_hot_encode=False, do_name=True, return_cols=False):
     df = load_data(input_folder, one_hot_encode=one_hot_encode, do_name=do_name)
 
     y_cols = ['time_minutes']
@@ -55,6 +55,8 @@ def get_data(input_folder, one_hot_encode=False, do_name=True):
     x = df[x_cols].values
     y = df[y_cols].values
 
+    if return_cols :
+        return x, y, x_cols
     return x, y
 
 
@@ -69,8 +71,40 @@ def get_feedforward_model(x):
     outlayer = Dense(1, activation='linear')(dense)
     model = Model(inputs=input_layer, outputs=outlayer)
     
-    print(model.summary())
+    # print(model.summary())
     return model
+
+def get_additive_model(x):
+    inlayer_normal = Input(shape=(602, )) #  everything but vaporfly
+    inlayer_shoe_effect = Input(shape=(24,)) # for gender plus 21 race courses
+    inlayer_shoe = Input(shape=(1,))
+
+    # make normal network
+    d = Dropout(0.1)(inlayer_normal)
+    temp = Dense(50, activation='relu')(d)
+    temp = Dense(50, activation='relu')(temp)
+    temp = Dense(20, activation='relu')(temp)
+    normal_out = Dense(1, activation='linear')(temp)
+
+    # make shoe effect network
+    temp = Dense(50, activation='relu')(inlayer_shoe_effect)
+    temp = Dense(20, activation='relu')(temp)
+    shoe_effect_out = Dense(1, activation='linear')(temp)
+
+    # activate the shoe effect network based on the inlayer shoe input (if vaporfly is present)
+    shoe_out = Multiply()([shoe_effect_out, inlayer_shoe])
+
+    # add shoe effect with normal regression
+    outlayer = Add()([shoe_out, normal_out])
+
+    model = Model(inputs=[inlayer_normal, inlayer_shoe_effect, inlayer_shoe], outputs=outlayer)
+    # print(model.summary())
+
+    shoe_effect_model = Model(inputs=[inlayer_shoe_effect, inlayer_shoe], outputs=shoe_out)
+
+    return model, shoe_effect_model
+
+
 
 def r2_keras(y_true, y_pred):
     SS_res =  K.sum(K.square(y_true - y_pred)) 
@@ -80,7 +114,8 @@ def r2_keras(y_true, y_pred):
 def compare_models():
     input_folder = 'data'
 
-    x, y = get_data(input_folder, one_hot_encode=True, do_name=False)
+    x, y, cols = get_data(input_folder, one_hot_encode=True, do_name=True, return_cols=True)
+    # print (cols)
 
     # really should be doing cross validation
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.15, shuffle=True)
@@ -102,12 +137,52 @@ def compare_models():
     nn_train_r2 = nn.evaluate(x_train, y_train)[1]
     nn_test_r2 = nn.evaluate(x_test, y_test)[1]
 
+
+    # now do additive network
+    an, shoe_model = get_additive_model(x_train)
+    # construct input vectors
+    x_train_df = pd.DataFrame(x_train, columns=cols)
+    train_normal = x_train_df[[col for col in cols if col != 'vaporfly']].values
+    train_shoe_effect = x_train_df[[col for col in cols if col=='gender' or 'race_' in col]].values
+    train_shoe = x_train_df[[col for col in cols if col == 'vaporfly']].values
+
+
+    # same for test
+    x_test_df = pd.DataFrame(x_test, columns=cols)
+    test_normal = x_test_df[[col for col in cols if col != 'vaporfly']].values
+    test_shoe_effect = x_test_df[[col for col in cols if col=='gender' or 'race_' in col]].values
+    test_shoe = x_test_df[[col for col in cols if col == 'vaporfly']].values
+
+
+    an.compile(optimizer='adam', loss='mean_squared_error', metrics=[r2_keras])
+    es = EarlyStopping(monitor='val_r2_keras', patience=20, mode='max')
+
+    hist = an.fit(x=[train_normal, train_shoe_effect, train_shoe], y=y_train, batch_size = 32, epochs=50, validation_data = ([test_normal, test_shoe_effect, test_shoe], y_test), callbacks=[es])
+    an_train_r2 = an.evaluate([train_normal, train_shoe_effect, train_shoe], y_train)[1]
+    an_test_r2 = an.evaluate([test_normal, test_shoe_effect, test_shoe], y_test)[1]
+
+
+    vaporfly_indices = [i for i in range(len(train_shoe)) if train_shoe[i] == 1]
+    vaporfly_train = [train_shoe_effect[vaporfly_indices], train_shoe[vaporfly_indices]]
+
+    preds = shoe_model.predict(x=vaporfly_train)
+    
+
+
+
     print("Linear Model:")
     print("\tTrain R Squared: " + str(linear_train_r2))
     print("\tTest R Squared: " + str(linear_test_r2))
     print("NN Model:")
     print("\tTrain R Squared: " + str(nn_train_r2))
     print("\tTest R Squared: " + str(nn_test_r2))
+    print("Additive Network Model:")
+    print("\tTrain R Squared: " + str(an_train_r2))
+    print("\tTest R Squared: " + str(an_test_r2))
+    print("\tEffect of shoe (train): " + str(np.mean(preds)) + " " + str(np.std(preds)))
+
+
+
 
 
 if __name__ == '__main__':
