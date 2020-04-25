@@ -137,6 +137,20 @@ def get_vaporfly_inputs(x, y, inverse=False):
     return x_ret, y_ret
 
 
+def split_gender(x, y, cols):
+    indices_f = [i for i in range(len(x[0])) if x[0][i][cols.index('gender')] == 0]
+    indices_m = [i for i in range(len(x[0])) if x[0][i][cols.index('gender')] == 1]
+    # print(indices_f)
+    # print(indices_m)
+
+    x_m = [x[0][indices_m], x[1][indices_m], x[2][indices_m]]
+    y_m = y[indices_m]
+
+    x_f = [x[0][indices_f], x[1][indices_f], x[2][indices_f]]
+    y_f = y[indices_f]
+
+    return x_m, x_f, y_m, y_f
+
 def get_feedforward_model(x):
     # right now, use network with 4 hidden layers with 50 nodes each
     input_layer = Input(shape=(len(x[0]),))
@@ -174,6 +188,10 @@ def get_additive_model(cols, shoe_effects=[]):
     d = Dropout(0.1)(inlayer_normal)
     temp = Dense(50, activation='relu')(d)
     temp = Dense(50, activation='relu')(temp)
+    temp = Dense(50, activation='relu')(temp)
+    temp = Dense(50, activation='relu')(temp)
+    temp = Dense(50, activation='relu')(temp)
+    temp = Dense(50, activation='relu')(temp)
     temp = Dense(20, activation='relu')(temp)
     normal_out = Dense(1, activation='linear')(temp)
 
@@ -186,10 +204,10 @@ def get_additive_model(cols, shoe_effects=[]):
     shoe_out = Multiply()([shoe_effect_out, inlayer_shoe])
 
     # add shoe effect with normal regression
-    outlayer = Add()([shoe_out, normal_out])
+    outlayer = Add()([normal_out, shoe_out])
 
     model = Model(inputs=[inlayer_normal, inlayer_shoe_effect, inlayer_shoe], outputs=outlayer)
-    print(model.summary())
+    # print(model.summary())
 
     # to get the activations for the additive layers
     layer_model = Model(inputs=[inlayer_normal, inlayer_shoe_effect, inlayer_shoe], outputs=[normal_out, shoe_out])
@@ -221,13 +239,13 @@ def compare_models():
     nn.compile(optimizer='adam', loss='mean_squared_error', metrics=[r2_keras])
     # early stopping to prevent overfitting
     es = EarlyStopping(monitor='val_r2_keras', patience=5, mode='max')
-    hist = nn.fit(x=x_train, y=y_train, batch_size = 32, epochs=50, validation_data = (x_test, y_test), callbacks=[es], verbose=0)
+    hist = nn.fit(x=x_train, y=y_train, batch_size = 32, epochs=150, validation_data = (x_test, y_test), callbacks=[], verbose=0)
     nn_train_r2 = nn.evaluate(x_train, y_train)[1]
     nn_test_r2 = nn.evaluate(x_test, y_test)[1]
 
 
     # now do additive network
-    shoe_effects = []
+    shoe_effects = ['gender']
     an, activation_network = get_additive_model(cols, shoe_effects=shoe_effects)
     # construct input vectors
     x_train_an = get_additive_inputs(x_train, cols, shoe_effects=shoe_effects)
@@ -236,7 +254,7 @@ def compare_models():
     an.compile(optimizer='adam', loss='mean_squared_error', metrics=[r2_keras])
     es = EarlyStopping(monitor='val_r2_keras', patience=20, mode='max')
 
-    hist = an.fit(x=x_train_an, y=y_train, batch_size = 32, epochs=100, validation_data = (x_test_an, y_test), callbacks=[es], verbose=1)
+    hist = an.fit(x=x_train_an, y=y_train, batch_size = 32, epochs=500, validation_data = (x_test_an, y_test), callbacks=[], verbose=0)
     an_train_r2 = an.evaluate(x_train_an, y_train)[1]
     an_test_r2 = an.evaluate(x_test_an, y_test)[1]
 
@@ -244,27 +262,64 @@ def compare_models():
     # not really sure if i should be doing this on train data, test data, or both
     vap_x, vap_y = get_vaporfly_inputs(x_train_an, y_train)
     nonvap_x, nonvap_y = get_vaporfly_inputs(x_train_an, y_train, inverse=True)
+
+    # need to also divide by gender, or else there isnt any visible vaporfly effect
+    vap_x_m, vap_x_f, vap_y_m, vap_y_f = split_gender(vap_x, vap_y, cols)
+    nonvap_x_m, nonvap_x_f, nonvap_y_m, nonvap_y_f = split_gender(nonvap_x, nonvap_y, cols)
+
+
+    preds_vap_m = activation_network.predict(vap_x_m)
+    preds_nonvap_m = activation_network.predict(nonvap_x_m)
+    preds_total_vap_m = an.predict(vap_x_m)
+    preds_total_nonvap_m = an.predict(nonvap_x_m)
+
+    preds_vap_f = activation_network.predict(vap_x_f)
+    preds_nonvap_f = activation_network.predict(nonvap_x_f)
+    preds_total_vap_f = an.predict(vap_x_f)
+    preds_total_nonvap_f = an.predict(nonvap_x_f)
+
+
+    # get a bunch of stats to print, probably a cleaner way to do this, will fix later
+    mean_normal_vap_m = np.mean(preds_vap_m[0])
+    std_normal_vap_m = np.std(preds_vap_m[0])
+    mean_shoe_vap_m = np.mean(preds_vap_m[1])
+    std_shoe_vap_m = np.std(preds_vap_m[1])
+
+    mean_normal_nonvap_m = np.mean(preds_nonvap_m[0])
+    std_normal_nonvap_m = np.std(preds_nonvap_m[0])
+    mean_shoe_nonvap_m = np.mean(preds_nonvap_m[1])
+    std_shoe_nonvap_m = np.std(preds_nonvap_m[1])
+
+    mean_vap_m = np.mean(preds_total_vap_m)
+    std_vap_m = np.std(preds_total_vap_m)
+    mean_nonvap_m = np.mean(preds_total_nonvap_m)
+    std_nonvap_m = np.std(preds_total_nonvap_m)
+
+    #female
+    mean_normal_vap_f = np.mean(preds_vap_f[0])
+    std_normal_vap_f = np.std(preds_vap_f[0])
+    mean_shoe_vap_f = np.mean(preds_vap_f[1])
+    std_shoe_vap_f = np.std(preds_vap_f[1])
+
+    mean_normal_nonvap_f = np.mean(preds_nonvap_f[0])
+    std_normal_nonvap_f = np.std(preds_nonvap_f[0])
+    mean_shoe_nonvap_f = np.mean(preds_nonvap_f[1])
+    std_shoe_nonvap_f = np.std(preds_nonvap_f[1])
+
+    mean_vap_f = np.mean(preds_total_vap_f)
+    std_vap_f = np.std(preds_total_vap_f)
+    mean_nonvap_f = np.mean(preds_total_nonvap_f)
+    std_nonvap_f = np.std(preds_total_nonvap_f)
+
+
     
-    preds_vap = activation_network.predict(vap_x)
-    preds_nonvap = activation_network.predict(nonvap_x)
-    preds_total_vap = an.predict(vap_x)
-    preds_total_nonvap = an.predict(nonvap_x)
 
-    mean_normal_vap = np.mean(preds_vap[0])
-    std_normal_vap = np.std(preds_vap[0])
-    mean_shoe_vap = np.mean(preds_vap[1])
-    std_shoe_vap = np.std(preds_vap[1])
+    female_vap = [y[i] for i in range(len(vap_y)) if vap_x[0][i][cols.index('gender')] == 0]
+    male_vap = [y[i] for i in range(len(vap_y)) if vap_x[0][i][cols.index('gender')] == 1]
+    female_nonvap = [y[i] for i in range(len(nonvap_y)) if nonvap_x[0][i][cols.index('gender')] == 0]
+    male_nonvap = [y[i] for i in range(len(nonvap_y)) if nonvap_x[0][i][cols.index('gender')] == 1]
 
-    mean_normal_nonvap = np.mean(preds_nonvap[0])
-    std_normal_nonvap = np.std(preds_nonvap[0])
-    mean_shoe_nonvap = np.mean(preds_nonvap[1])
-    std_shoe_nonvap = np.std(preds_nonvap[1])
-
-    mean_vap = np.mean(preds_total_vap)
-    std_vap = np.std(preds_total_vap)
-    mean_nonvap = np.mean(preds_total_nonvap)
-    std_nonvap = np.std(preds_total_nonvap)
-
+    # print(cols)
     print("Linear Model:")
     print("\tTrain R Squared: " + str(linear_train_r2))
     print("\tTest R Squared: " + str(linear_test_r2))
@@ -279,19 +334,37 @@ def compare_models():
     print("\tTrain R Squared: " + str(an_train_r2))
     print("\tTest R Squared: " + str(an_test_r2))
 
+    print("Male")
     print("\tActivations Vaporfly:")
-    print("\t\tNormal: mean=" + str(mean_normal_vap) + ", std=" + str(std_normal_vap))
-    print("\t\tShoe: mean=" + str(mean_shoe_vap) + ", std=" + str(std_shoe_vap))
-    print("\t\tTotal: mean=" + str(mean_vap) + ", std=" + str(std_vap))
+    print("\t\tNormal: mean=" + str(mean_normal_vap_m) + ", std=" + str(std_normal_vap_m))
+    print("\t\tShoe: mean=" + str(mean_shoe_vap_m) + ", std=" + str(std_shoe_vap_m))
+    print("\t\tTotal: mean=" + str(mean_vap_m) + ", std=" + str(std_vap_m))
     print("\tActivations Non Vaporfly:")
-    print("\t\tNormal: mean=" + str(mean_normal_nonvap) + ", std=" + str(std_normal_nonvap))
-    print("\t\tShoe: mean=" + str(mean_shoe_nonvap) + ", std=" + str(std_shoe_nonvap))
-    print("\t\tTotal: mean=" + str(mean_nonvap) + ", std=" + str(std_nonvap))
+    print("\t\tNormal: mean=" + str(mean_normal_nonvap_m) + ", std=" + str(std_normal_nonvap_m))
+    print("\t\tShoe: mean=" + str(mean_shoe_nonvap_m) + ", std=" + str(std_shoe_nonvap_m))
+    print("\t\tTotal: mean=" + str(mean_nonvap_m) + ", std=" + str(std_nonvap_m))
+
+    print("Female")
+    print("\tActivations Vaporfly:")
+    print("\t\tNormal: mean=" + str(mean_normal_vap_f) + ", std=" + str(std_normal_vap_f))
+    print("\t\tShoe: mean=" + str(mean_shoe_vap_f) + ", std=" + str(std_shoe_vap_f))
+    print("\t\tTotal: mean=" + str(mean_vap_f) + ", std=" + str(std_vap_f))
+    print("\tActivations Non Vaporfly:")
+    print("\t\tNormal: mean=" + str(mean_normal_nonvap_f) + ", std=" + str(std_normal_nonvap_f))
+    print("\t\tShoe: mean=" + str(mean_shoe_nonvap_f) + ", std=" + str(std_shoe_nonvap_f))
+    print("\t\tTotal: mean=" + str(mean_nonvap_f) + ", std=" + str(std_nonvap_f))
 
 
-    print("Actual times:")
-    print("\tVaporfly: mean=" + str(np.mean(vap_y)) + ", std=" + str(np.std(vap_y)))
-    print("\tNon Vaporfly: mean=" + str(np.mean(nonvap_y)) + ", std=" + str(np.std(nonvap_y)))
+    print("Actual times vaporfly:")
+    print("\tTotal: mean=" + str(np.mean(vap_y)) + ", std=" + str(np.std(vap_y)))
+    print("\tMale: mean=" + str(np.mean(male_vap)) + ", std=" + str(np.std(male_vap)))
+    print("\tFemale: mean=" + str(np.mean(female_vap)) + ", std=" + str(np.std(female_vap)))
+
+    print("Actual times nonvaporfly:")
+    print("\tTotal: mean=" + str(np.mean(nonvap_y)) + ", std=" + str(np.std(nonvap_y)))
+    print("\tMale: mean=" + str(np.mean(male_nonvap)) + ", std=" + str(np.std(male_nonvap)))
+    print("\tFemale: mean=" + str(np.mean(female_nonvap)) + ", std=" + str(np.std(female_nonvap)))
+    
 
 
 
