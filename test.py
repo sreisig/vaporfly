@@ -276,43 +276,7 @@ def compare_models():
     preds_vap_f = activation_network.predict(vap_x_f)
     preds_nonvap_f = activation_network.predict(nonvap_x_f)
     preds_total_vap_f = an.predict(vap_x_f)
-    preds_total_nonvap_f = an.predict(nonvap_x_f)
-
-
-    # get a bunch of stats to print, probably a cleaner way to do this, will fix later
-    mean_normal_vap_m = np.mean(preds_vap_m[0])
-    std_normal_vap_m = np.std(preds_vap_m[0])
-    mean_shoe_vap_m = np.mean(preds_vap_m[1])
-    std_shoe_vap_m = np.std(preds_vap_m[1])
-
-    mean_normal_nonvap_m = np.mean(preds_nonvap_m[0])
-    std_normal_nonvap_m = np.std(preds_nonvap_m[0])
-    mean_shoe_nonvap_m = np.mean(preds_nonvap_m[1])
-    std_shoe_nonvap_m = np.std(preds_nonvap_m[1])
-
-    mean_vap_m = np.mean(preds_total_vap_m)
-    std_vap_m = np.std(preds_total_vap_m)
-    mean_nonvap_m = np.mean(preds_total_nonvap_m)
-    std_nonvap_m = np.std(preds_total_nonvap_m)
-
-    #female
-    mean_normal_vap_f = np.mean(preds_vap_f[0])
-    std_normal_vap_f = np.std(preds_vap_f[0])
-    mean_shoe_vap_f = np.mean(preds_vap_f[1])
-    std_shoe_vap_f = np.std(preds_vap_f[1])
-
-    mean_normal_nonvap_f = np.mean(preds_nonvap_f[0])
-    std_normal_nonvap_f = np.std(preds_nonvap_f[0])
-    mean_shoe_nonvap_f = np.mean(preds_nonvap_f[1])
-    std_shoe_nonvap_f = np.std(preds_nonvap_f[1])
-
-    mean_vap_f = np.mean(preds_total_vap_f)
-    std_vap_f = np.std(preds_total_vap_f)
-    mean_nonvap_f = np.mean(preds_total_nonvap_f)
-    std_nonvap_f = np.std(preds_total_nonvap_f)
-
-
-    
+    preds_total_nonvap_f = an.predict(nonvap_x_f)   
 
     female_vap = [y[i] for i in range(len(vap_y)) if vap_x[0][i][cols.index('gender')] == 0]
     male_vap = [y[i] for i in range(len(vap_y)) if vap_x[0][i][cols.index('gender')] == 1]
@@ -336,23 +300,23 @@ def compare_models():
 
     print("Male")
     print("\tActivations Vaporfly:")
-    print("\t\tNormal: mean=" + str(mean_normal_vap_m) + ", std=" + str(std_normal_vap_m))
-    print("\t\tShoe: mean=" + str(mean_shoe_vap_m) + ", std=" + str(std_shoe_vap_m))
-    print("\t\tTotal: mean=" + str(mean_vap_m) + ", std=" + str(std_vap_m))
+    print("\t\tNormal: mean=" + str(np.mean(preds_vap_m[0])) + ", std=" + str(np.std(preds_vap_m[0])))
+    print("\t\tShoe: mean=" + str(np.mean(preds_vap_m[1])) + ", std=" + str(np.std(preds_vap_m[1])))
+    print("\t\tTotal: mean=" + str(np.mean(preds_total_vap_m)) + ", std=" + str(np.std(preds_total_vap_m)))
     print("\tActivations Non Vaporfly:")
-    print("\t\tNormal: mean=" + str(mean_normal_nonvap_m) + ", std=" + str(std_normal_nonvap_m))
-    print("\t\tShoe: mean=" + str(mean_shoe_nonvap_m) + ", std=" + str(std_shoe_nonvap_m))
-    print("\t\tTotal: mean=" + str(mean_nonvap_m) + ", std=" + str(std_nonvap_m))
+    print("\t\tNormal: mean=" + str(np.mean(preds_nonvap_m[0])) + ", std=" + str(np.std(preds_nonvap_m[0])))
+    print("\t\tShoe: mean=" + str(np.mean(preds_nonvap_m[1])) + ", std=" + str(np.std(preds_nonvap_m[1])))
+    print("\t\tTotal: mean=" + str(np.mean(preds_total_nonvap_m)) + ", std=" + str(np.std(preds_total_nonvap_m)))
 
     print("Female")
     print("\tActivations Vaporfly:")
-    print("\t\tNormal: mean=" + str(mean_normal_vap_f) + ", std=" + str(std_normal_vap_f))
-    print("\t\tShoe: mean=" + str(mean_shoe_vap_f) + ", std=" + str(std_shoe_vap_f))
-    print("\t\tTotal: mean=" + str(mean_vap_f) + ", std=" + str(std_vap_f))
+    print("\t\tNormal: mean=" + str(np.mean(preds_vap_f[0])) + ", std=" + str(np.std(preds_vap_f[0])))
+    print("\t\tShoe: mean=" + str(np.mean(preds_vap_f[1])) + ", std=" + str(np.std(preds_vap_f[1])))
+    print("\t\tTotal: mean=" + str(np.mean(preds_total_vap_f)) + ", std=" + str(np.std(preds_total_vap_f)))
     print("\tActivations Non Vaporfly:")
-    print("\t\tNormal: mean=" + str(mean_normal_nonvap_f) + ", std=" + str(std_normal_nonvap_f))
-    print("\t\tShoe: mean=" + str(mean_shoe_nonvap_f) + ", std=" + str(std_shoe_nonvap_f))
-    print("\t\tTotal: mean=" + str(mean_nonvap_f) + ", std=" + str(std_nonvap_f))
+    print("\t\tNormal: mean=" + str(np.mean(preds_nonvap_f[0])) + ", std=" + str(np.std(preds_nonvap_f[0])))
+    print("\t\tShoe: mean=" + str(np.mean(preds_nonvap_f[1])) + ", std=" + str(np.std(preds_nonvap_f[1])))
+    print("\t\tTotal: mean=" + str(np.mean(preds_total_nonvap_f)) + ", std=" + str(np.std(preds_total_nonvap_f)))
 
 
     print("Actual times vaporfly:")
