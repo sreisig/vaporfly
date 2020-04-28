@@ -1,12 +1,17 @@
-- Check that R2 is working correctly
+1. Check that R2 is working correctly
     - Plot predicted vals?
+        - Ask Dr. Hammerling about how to plot nicely
     - Output fit output while training
         - RSS
         - R2, MSE
     - Add rss_keras to all model metrics
-- Get good R2 on just training set (don't split to training/test)
+    - in get_train_test make sure that splitting functionality for r2 working correctly
+2. Bin runners by time/gender
+    - Bin by quartile
+    - Bin by range
+3. Get good R2 on just training set (don't split to training/test)
     - Maybe have code s.t. only one point in test set
-- Try different input combinations/transformations
+4. Try different input combinations/transformations
     - Current: 
         - Normal: Race & Gender
         - Vaporfly: Gender
@@ -16,7 +21,8 @@
             - Basically emulating a additive model at this point
         - Normal: Runner, Gender depending on if splitting networks
         - Vaporfly: Gender depending on if splitting
-- Runner, race in normal inputs, heavy l1 l2 regularization
+5. Runner, race in normal inputs, heavy l1 l2 regularization
     - Can't include vaporfly effect on race/runner combos
-    
+6. Add log transform to y values
+7. Actually do random effects
         
