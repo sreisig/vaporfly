@@ -96,36 +96,36 @@ def get_train_test(x, y, cols, rand=0.2):
 
 
 '''
-gets inputs to the additive network. Shoe effects are the columns to be used for the shoe effect branch.
+gets inputs to the additive network. vaporfly effects are the columns to be used for the vaporfly effect branch.
 Also allowed to be a mask (such as 'runner_') to select all columns matching the mask
 
 '''
-def get_additive_inputs(x, cols, shoe_effects=[]):
+def get_additive_inputs(x, cols, vaporfly_effects=[]):
     x_df = pd.DataFrame(x, columns=cols) # easier to select columns using a dataframe
 
     x_normal = x_df[[col for col in cols if col != 'vaporfly']].values
 
-    x_shoe = x_df['vaporfly'].values # this input activates the shoe effect branch
+    x_vaporfly = x_df['vaporfly'].values # this input activates the vaporfly effect branch
 
-    shoe_effect_columns = ['vaporfly'] # the inputs to make the shoe effect branch
+    vaporfly_effect_columns = ['vaporfly'] # the inputs to make the vaporfly effect branch
 
-    for eff in shoe_effects:
+    for eff in vaporfly_effects:
         if eff == 'gender':
-            shoe_effect_columns.append(eff)
+            vaporfly_effect_columns.append(eff)
         else:
             for new_col in [col for col in cols if eff in col]:
-                shoe_effect_columns.append(new_col)
+                vaporfly_effect_columns.append(new_col)
     
-    x_shoe_effects = x_df[shoe_effect_columns].values
+    x_vaporfly_effects = x_df[vaporfly_effect_columns].values
 
-    return [x_normal, x_shoe_effects, x_shoe]
+    return [x_normal, x_vaporfly_effects, x_vaporfly]
 
 '''
 returns just the inputs where vaporfly is true
 (or false, if inverse=True)
 '''
 def get_vaporfly_inputs(x, y, inverse=False):
-    # x is list [normal inputs, shoe_effect_inputs, shoe_input]
+    # x is list [normal inputs, vaporfly_effect_inputs, vaporfly_input]
     if inverse == False:
         indices = np.where(x[2] == 1)
     else:
@@ -171,23 +171,23 @@ def get_feedforward_model(x):
     return model
 
 '''
-gets the additive network. Shoe effects are the columns to be used for the shoe effect branch.
+gets the additive network. vaporfly effects are the columns to be used for the vaporfly effect branch.
 Also allowed to be a mask (such as 'runner_') to select all columns matching the mask
 
 '''
-def get_additive_model(cols, shoe_effects=[]):
+def get_additive_model(cols, vaporfly_effects=[]):
 
-    shoe_effect_columns = ['vaporfly']
-    for eff in shoe_effects:
+    vaporfly_effect_columns = ['vaporfly']
+    for eff in vaporfly_effects:
         if eff == 'gender':
-            shoe_effect_columns.append(eff)
+            vaporfly_effect_columns.append(eff)
         else:
             for new_col in [col for col in cols if eff in col]:
-                shoe_effect_columns.append(new_col)
+                vaporfly_effect_columns.append(new_col)
 
     inlayer_normal = Input(shape=(len(cols) - 1, )) #  everything but vaporfly
-    inlayer_shoe_effect = Input(shape=(len(shoe_effect_columns),)) 
-    inlayer_shoe = Input(shape=(1,))
+    inlayer_vaporfly_effect = Input(shape=(len(vaporfly_effect_columns),)) 
+    inlayer_vaporfly = Input(shape=(1,))
 
     # make normal network
     d = Dropout(0.1)(inlayer_normal)
@@ -200,22 +200,22 @@ def get_additive_model(cols, shoe_effects=[]):
     temp = Dense(20, activation='relu')(temp)
     normal_out = Dense(1, activation='linear')(temp)
 
-    # make shoe effect network
-    temp = Dense(50, activation='relu')(inlayer_shoe_effect)
+    # make vaporfly effect network
+    temp = Dense(50, activation='relu')(inlayer_vaporfly_effect)
     temp = Dense(20, activation='relu')(temp)
-    shoe_effect_out = Dense(1, activation='linear')(temp)
+    vaporfly_effect_out = Dense(1, activation='linear')(temp)
 
-    # activate the shoe effect network based on the inlayer shoe input (if vaporfly is present)
-    shoe_out = Multiply()([shoe_effect_out, inlayer_shoe])
+    # activate the vaporfly effect network based on the inlayer vaporfly input (if vaporfly is present)
+    vaporfly_out = Multiply()([vaporfly_effect_out, inlayer_vaporfly])
 
-    # add shoe effect with normal regression
-    outlayer = Add()([normal_out, shoe_out])
+    # add vaporfly effect with normal regression
+    outlayer = Add()([normal_out, vaporfly_out])
 
-    model = Model(inputs=[inlayer_normal, inlayer_shoe_effect, inlayer_shoe], outputs=outlayer)
+    model = Model(inputs=[inlayer_normal, inlayer_vaporfly_effect, inlayer_vaporfly], outputs=outlayer)
     # print(model.summary())
 
     # to get the activations for the additive layers
-    layer_model = Model(inputs=[inlayer_normal, inlayer_shoe_effect, inlayer_shoe], outputs=[normal_out, shoe_out])
+    layer_model = Model(inputs=[inlayer_normal, inlayer_vaporfly_effect, inlayer_vaporfly], outputs=[normal_out, vaporfly_out])
 
     return model, layer_model
 
@@ -224,6 +224,9 @@ def r2_keras(y_true, y_pred):
     SS_res =  K.sum(K.square(y_true - y_pred)) 
     SS_tot = K.sum(K.square(y_true - K.mean(y_true))) 
     return ( 1 - SS_res/(SS_tot + K.epsilon()) )
+
+def rss_keras(y_true, y_pred):
+    return ( K.sum(K.square(y_true - y_pred)) )
 
 def compare_models():
     input_folder = 'data'
@@ -241,7 +244,7 @@ def compare_models():
     linear_test_r2 = linear_model.score(x_test, y_test)
 
     nn = get_feedforward_model(x_train)
-    nn.compile(optimizer='adam', loss='mean_squared_error', metrics=[r2_keras])
+    nn.compile(optimizer='adam', loss='mean_squared_error', metrics=[r2_keras, rss_keras])
     # early stopping to prevent overfitting
     es = EarlyStopping(monitor='val_r2_keras', patience=5, mode='max')
     hist = nn.fit(x=x_train, y=y_train, batch_size = 32, epochs=150, validation_data = (x_test, y_test), callbacks=[], verbose=0)
@@ -250,9 +253,9 @@ def compare_models():
 
 
     # now do additive network, one for each male and female
-    shoe_effects = ['gender', 'race_']
-    an_m, activation_network_m = get_additive_model(cols, shoe_effects=shoe_effects)
-    an_f, activation_network_f = get_additive_model(cols, shoe_effects=shoe_effects)
+    vaporfly_effects = ['gender', 'race_']
+    an_m, activation_network_m = get_additive_model(cols, vaporfly_effects=vaporfly_effects)
+    an_f, activation_network_f = get_additive_model(cols, vaporfly_effects=vaporfly_effects)
 
 
     # construct input vectors
@@ -269,13 +272,13 @@ def compare_models():
     # x_train_m, x_test_m, y_train_m, y_test_m = get_train_test(x_m, y_m, cols, rand=0.05)
     # x_train_f, x_test_f, y_train_f, y_test_f = get_train_test(x_f, y_f, cols, rand=0.05)
 
-    x_train_m = get_additive_inputs(x_train_m, cols, shoe_effects=shoe_effects)
-    x_test_m = get_additive_inputs(x_test_m, cols, shoe_effects=shoe_effects)
-    x_train_f = get_additive_inputs(x_train_f, cols, shoe_effects=shoe_effects)
-    x_test_f = get_additive_inputs(x_test_f, cols, shoe_effects=shoe_effects)
+    x_train_m = get_additive_inputs(x_train_m, cols, vaporfly_effects=vaporfly_effects)
+    x_test_m = get_additive_inputs(x_test_m, cols, vaporfly_effects=vaporfly_effects)
+    x_train_f = get_additive_inputs(x_train_f, cols, vaporfly_effects=vaporfly_effects)
+    x_test_f = get_additive_inputs(x_test_f, cols, vaporfly_effects=vaporfly_effects)
 
     # train male
-    an_m.compile(optimizer='adam', loss='mean_squared_error', metrics=[r2_keras])
+    an_m.compile(optimizer='adam', loss='mean_squared_error', metrics=[r2_keras, rss_keras])
     es = EarlyStopping(monitor='val_r2_keras', patience=15, mode='max')
 
     hist = an_m.fit(x=x_train_m, y=y_train_m, batch_size = 32, epochs=500, validation_data = (x_test_m, y_test_m), callbacks=[], verbose=0)
@@ -325,7 +328,7 @@ def compare_models():
 
 
     print("Additive Network Model:")
-    print("\tShoe Effects: " + str(shoe_effects))
+    print("\tvaporfly Effects: " + str(vaporfly_effects))
     print("\tR Squared Male: train=" + str(an_train_r2_m) + ', test=' + str(an_test_r2_m))
     print("\tR Squared Female: train=" + str(an_train_r2_f) + ', test=' + str(an_test_r2_f))
 
@@ -333,22 +336,22 @@ def compare_models():
     print("\tCounts: Train=" + str(len(y_train_m)) + ", Test=" + str(len(y_test_m)))
     print("\tActivations Vaporfly:")
     print("\t\tNormal: mean=" + str(np.mean(preds_vap_m[0])) + ", std=" + str(np.std(preds_vap_m[0])))
-    print("\t\tShoe: mean=" + str(np.mean(preds_vap_m[1])) + ", std=" + str(np.std(preds_vap_m[1])))
+    print("\t\tvaporfly: mean=" + str(np.mean(preds_vap_m[1])) + ", std=" + str(np.std(preds_vap_m[1])))
     print("\t\tTotal: mean=" + str(np.mean(preds_total_vap_m)) + ", std=" + str(np.std(preds_total_vap_m)))
     print("\tActivations Non Vaporfly:")
     print("\t\tNormal: mean=" + str(np.mean(preds_nonvap_m[0])) + ", std=" + str(np.std(preds_nonvap_m[0])))
-    print("\t\tShoe: mean=" + str(np.mean(preds_nonvap_m[1])) + ", std=" + str(np.std(preds_nonvap_m[1])))
+    print("\t\tvaporfly: mean=" + str(np.mean(preds_nonvap_m[1])) + ", std=" + str(np.std(preds_nonvap_m[1])))
     print("\t\tTotal: mean=" + str(np.mean(preds_total_nonvap_m)) + ", std=" + str(np.std(preds_total_nonvap_m)))
 
     print("Female")
     print("\tCounts: Train=" + str(len(y_train_f)) + ", Test=" + str(len(y_test_f)))
     print("\tActivations Vaporfly:")
     print("\t\tNormal: mean=" + str(np.mean(preds_vap_f[0])) + ", std=" + str(np.std(preds_vap_f[0])))
-    print("\t\tShoe: mean=" + str(np.mean(preds_vap_f[1])) + ", std=" + str(np.std(preds_vap_f[1])))
+    print("\t\tvaporfly: mean=" + str(np.mean(preds_vap_f[1])) + ", std=" + str(np.std(preds_vap_f[1])))
     print("\t\tTotal: mean=" + str(np.mean(preds_total_vap_f)) + ", std=" + str(np.std(preds_total_vap_f)))
     print("\tActivations Non Vaporfly:")
     print("\t\tNormal: mean=" + str(np.mean(preds_nonvap_f[0])) + ", std=" + str(np.std(preds_nonvap_f[0])))
-    print("\t\tShoe: mean=" + str(np.mean(preds_nonvap_f[1])) + ", std=" + str(np.std(preds_nonvap_f[1])))
+    print("\t\tvaporfly: mean=" + str(np.mean(preds_nonvap_f[1])) + ", std=" + str(np.std(preds_nonvap_f[1])))
     print("\t\tTotal: mean=" + str(np.mean(preds_total_nonvap_f)) + ", std=" + str(np.std(preds_total_nonvap_f)))
 
 
