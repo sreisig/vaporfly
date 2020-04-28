@@ -6,9 +6,13 @@
         - R2, MSE
     - Add rss_keras to all model metrics
     - in get_train_test make sure that splitting functionality for r2 working correctly
+    - Get R2 seperate from keras tensors so more robust
 2. Bin runners by time/gender
+    - Exploratory data analysis to determine bins
     - Bin by quartile
     - Bin by range
+    - Binning individual data points by race time
+    - Binning individual runners by average race time
 3. Get good R2 on just training set (don't split to training/test)
     - Maybe have code s.t. only one point in test set
 4. Try different input combinations/transformations

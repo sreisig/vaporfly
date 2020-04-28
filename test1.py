@@ -1,3 +1,5 @@
+# Combined M/F model
+
 import pandas as pd
 import numpy as np
 import os 
@@ -222,6 +224,9 @@ def r2_keras(y_true, y_pred):
     SS_res =  K.sum(K.square(y_true - y_pred)) 
     SS_tot = K.sum(K.square(y_true - K.mean(y_true))) 
     return ( 1 - SS_res/(SS_tot + K.epsilon()) )
+
+def rss_keras(y_true, y_pred):
+    return ( K.sum(K.square(y_true - y_pred)) )
 
 def compare_models():
     input_folder = 'data'
