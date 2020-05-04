@@ -1,3 +1,5 @@
+# Combined M/F model
+
 import pandas as pd
 import numpy as np
 import os 
@@ -265,7 +267,9 @@ def get_additive_model(cols, shoe_effects=[]):
     return model, layer_model
 
 
+
 def compare_models(test_size=0.2):
+
     input_folder = 'data'
 
     x, y, cols = get_data(input_folder, one_hot_encode=True, do_name=True, return_cols=True)
@@ -385,13 +389,13 @@ def compare_models(test_size=0.2):
 
     print("Actual times vaporfly:")
     print("\tTotal: mean=" + str(np.mean(vap_y)) + ", std=" + str(np.std(vap_y)))
-    print("\tMale: mean=" + str(np.mean(vap_y_m)) + ", std=" + str(np.std(male_vap)))
-    print("\tFemale: mean=" + str(np.mean(vap_y_f)) + ", std=" + str(np.std(female_vap)))
+    print("\tMale: mean=" + str(np.mean(vap_y_m)) + ", std=" + str(np.std(vap_y_m)))
+    print("\tFemale: mean=" + str(np.mean(vap_y_f)) + ", std=" + str(np.std(vap_y_f)))
 
     print("Actual times nonvaporfly:")
     print("\tTotal: mean=" + str(np.mean(nonvap_y)) + ", std=" + str(np.std(nonvap_y)))
-    print("\tMale: mean=" + str(np.mean(nonvap_y_m)) + ", std=" + str(np.std(male_nonvap)))
-    print("\tFemale: mean=" + str(np.mean(nonvap_y_f)) + ", std=" + str(np.std(female_nonvap)))
+    print("\tMale: mean=" + str(np.mean(nonvap_y_m)) + ", std=" + str(np.std(nonvap_y_m)))
+    print("\tFemale: mean=" + str(np.mean(nonvap_y_f)) + ", std=" + str(np.std(nonvap_y_f)))
     
 
 
