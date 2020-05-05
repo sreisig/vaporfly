@@ -17,7 +17,7 @@ from keras.callbacks import EarlyStopping
 
 from util import *
 
-def compare_models(test_size=0.2, shoe_effects=['gender', 'race_']):
+def compare_models(test_size=0.2, shoe_effects=['race_', 'gender']):
 
     input_folder = 'data'
 
@@ -63,7 +63,7 @@ def compare_models(test_size=0.2, shoe_effects=['gender', 'race_']):
     if test_size != 0:
         hist = an.fit(x=x_train_an, y=y_train, batch_size = 32, epochs=200, validation_data = (x_test_an, y_test), callbacks=[], verbose=0)
     else:
-        hist = an.fit(x=x_train_an, y=y_train, batch_size = 32, epochs=200, callbacks=[], verbose=0)
+        hist = an.fit(x=x_train_an, y=y_train, batch_size = 32, epochs=1000, callbacks=[], verbose=0)
 
     an_train_r2 = r2_score(y_train, an.predict(x_train_an))
     if test_size != 0:
@@ -74,10 +74,10 @@ def compare_models(test_size=0.2, shoe_effects=['gender', 'race_']):
     # not really sure if i should be doing this on train data, test data, or both
     vap_x, vap_y = get_vaporfly_inputs(x_train_an, y_train)
     nonvap_x, nonvap_y = get_vaporfly_inputs(x_train_an, y_train, inverse=True)
-    print (vap_x)
-    print (nonvap_x)
-    print (np.mean(vap_y))
-    print (np.mean(nonvap_y))
+    # print (vap_x)
+    # print (nonvap_x)
+    # print (np.mean(vap_y))
+    # print (np.mean(nonvap_y))
 
     # need to also divide by gender
     vap_x_m, vap_x_f, vap_y_m, vap_y_f = split_gender(vap_x, vap_y, new_cols)
@@ -106,7 +106,6 @@ def compare_models(test_size=0.2, shoe_effects=['gender', 'race_']):
     print("\tTrain R Squared: " + str(nn_train_r2))
     if test_size != 0:
         print("\tTest R Squared: " + str(nn_test_r2))
-
 
     print("Additive Network Model:")
     print("\tShoe Effects: " + str(shoe_effects))

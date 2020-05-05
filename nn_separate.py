@@ -1,5 +1,4 @@
 # Separate M/F models
-
 import pandas as pd
 import numpy as np
 import os 
@@ -21,7 +20,7 @@ from scipy.stats import percentileofscore
 from util import *
 
 
-def compare_models(test_size=0.2, shoe_effects=['gender', 'race_']):
+def compare_models(test_size=0.2, shoe_effects=['race_']):
     input_folder = 'data'
 
     x, y, cols = get_data(input_folder, one_hot_encode=True, do_name=True, return_cols=True)
@@ -135,8 +134,8 @@ def compare_models(test_size=0.2, shoe_effects=['gender', 'race_']):
     y_train_vap = np.concatenate([vap_y_m, vap_y_f])
     y_train_nonvap = np.concatenate([nonvap_y_m, nonvap_y_f])
 
-    all_preds_m = an_m.predict(x_train_m)
-
+    # all_preds_m = an_m.predict(x_train_m)
+    # plt.hist(preds_vap_m[1], 30)
     # plt.scatter(y_train_m, all_preds_m)
     # plt.xlabel("Y True")
     # plt.ylabel("Y pred")

@@ -55,8 +55,8 @@ def load_data(input_folder, one_hot_encode=False, do_name=True, runner_bins=Fals
         for runner in np.unique(df_male['match_name'].values):
             perc = percentileofscore(times, runner_times[runner])
 
-            # perc is a number between 0 and 100. Can just divide by runner_bins to get bin
-            runner_to_bin[runner] = int(perc / runner_bins)
+            # perc is a number between 0 and 100.
+            runner_to_bin[runner] = int(perc / (100 / runner_bins))
 
         # now do female
         runner_times = {} # reset dict
@@ -67,8 +67,8 @@ def load_data(input_folder, one_hot_encode=False, do_name=True, runner_bins=Fals
         for runner in np.unique(df_female['match_name'].values):
             perc = percentileofscore(times, runner_times[runner])
 
-            # perc is a number between 0 and 100. Can just divide by runner_bins to get bin
-            runner_to_bin[runner] = int(perc / runner_bins)
+            # perc is a number between 0 and 100
+            runner_to_bin[runner] = int(perc / (100 / runner_bins))
         
 
         # now runner_to_bin is populated, just assign it in original dataframe
@@ -234,11 +234,7 @@ def get_additive_model(cols, shoe_effects=[]):
     inlayer_shoe = Input(shape=(1,))
 
     # make normal network
-    d = Dropout(0.1)(inlayer_normal)
-    temp = Dense(50, activation='relu')(d)
-    temp = Dense(50, activation='relu')(temp)
-    temp = Dense(50, activation='relu')(temp)
-    temp = Dense(50, activation='relu')(temp)
+    temp = Dense(50, activation='relu')(inlayer_normal)
     temp = Dense(50, activation='relu')(temp)
     temp = Dense(50, activation='relu')(temp)
     temp = Dense(20, activation='relu')(temp)
@@ -246,7 +242,7 @@ def get_additive_model(cols, shoe_effects=[]):
 
     # make shoe effect network
     temp = Dense(50, activation='relu')(inlayer_shoe_effect)
-    temp = Dense(20, activation='relu')(temp)
+    temp = Dense(30, activation='relu')(temp)
     shoe_effect_out = Dense(1, activation='linear')(temp)
 
     # activate the shoe effect network based on the inlayer shoe input (if vaporfly is present)
